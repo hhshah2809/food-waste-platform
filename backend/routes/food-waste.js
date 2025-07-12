@@ -155,6 +155,27 @@ router.put("/:id", authMiddleware, async (req, res) => {
     });
   }
 });
+// CLAIM - Mark food waste as claimed (protected)
+router.put("/:id/claim", authMiddleware, async (req, res) => {
+  try {
+    const foodWaste = await FoodWaste.findById(req.params.id);
+    if (!foodWaste) {
+      return res.status(404).json({ success: false, error: "Food waste not found." });
+    }
+
+    if (foodWaste.status !== "available") {
+      return res.status(400).json({ success: false, error: "Food waste is not available to claim." });
+    }
+
+    foodWaste.status = "claimed";
+    await foodWaste.save();
+
+    res.status(200).json({ success: true, message: "Food waste claimed successfully." });
+  } catch (err) {
+    console.error("Claim error:", err);
+    res.status(500).json({ success: false, error: "Failed to claim food waste." });
+  }
+});
 
 // DELETE - Remove food waste entry (protected)
 router.delete("/:id", authMiddleware, async (req, res) => {

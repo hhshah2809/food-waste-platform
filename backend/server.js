@@ -73,7 +73,9 @@ app.use('/api/users', userRoutes);
 
 // Protected routes
 // ✅ Correct
-app.use("/api/food-waste", authMiddleware, foodWasteRoutes);
+
+// ✅ CORRECT - let routes decide which ones need auth
+app.use("/api/food-waste", foodWasteRoutes);
 
 // 8. Error Handling Middleware
 app.use((err, req, res, next) => {
