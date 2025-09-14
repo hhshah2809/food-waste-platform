@@ -156,9 +156,13 @@ router.put("/:id", authMiddleware, async (req, res) => {
   }
 });
 // CLAIM - Mark food waste as claimed (protected)
+const nodemailer = require("nodemailer");
+
+// Inside your claim route
 router.put("/:id/claim", authMiddleware, async (req, res) => {
   try {
-    const foodWaste = await FoodWaste.findById(req.params.id);
+    const foodWaste = await FoodWaste.findById(req.params.id).populate("donor", "name email");
+
     if (!foodWaste) {
       return res.status(404).json({ success: false, error: "Food waste not found." });
     }
@@ -170,12 +174,53 @@ router.put("/:id/claim", authMiddleware, async (req, res) => {
     foodWaste.status = "claimed";
     await foodWaste.save();
 
+    const claimerName = req.user.name;
+    const claimerEmail = req.user.email;
+
+    // ✅ Setup NodeMailer transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail", // or your email provider
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: foodWaste.donor.email,
+      subject: "Your food waste has been claimed!",
+      text: `
+Hi ${foodWaste.donor.name},
+
+Your food waste entry "${foodWaste.type}" has been claimed.
+
+Claimer Details:
+Name: ${claimerName}
+Email: ${claimerEmail}
+
+Please contact the claimer to arrange pickup if needed.
+
+Thanks for reducing food waste!
+      `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Email send error:", error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+
     res.status(200).json({ success: true, message: "Food waste claimed successfully." });
+
   } catch (err) {
     console.error("Claim error:", err);
     res.status(500).json({ success: false, error: "Failed to claim food waste." });
   }
 });
+
 
 // DELETE - Remove food waste entry (protected)
 router.delete("/:id", authMiddleware, async (req, res) => {
